@@ -51,6 +51,7 @@ import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+
 import jdk.jfr.internal.event.EventConfiguration;
 import jdk.jfr.internal.event.EventWriter;
 import jdk.jfr.Enabled;
@@ -59,6 +60,7 @@ import jdk.jfr.Name;
 import jdk.jfr.Registered;
 import jdk.jfr.SettingControl;
 import jdk.jfr.SettingDefinition;
+import jdk.jfr.internal.settings.SelectorValue;
 import jdk.jfr.internal.util.Utils;
 import jdk.jfr.internal.util.Bytecode;
 import jdk.jfr.internal.util.ImplicitFields;
@@ -82,9 +84,12 @@ final class EventInstrumentation {
     private static final FieldDesc FIELD_DURATION = FieldDesc.of(long.class, ImplicitFields.DURATION);
     private static final FieldDesc FIELD_EVENT_CONFIGURATION = FieldDesc.of(Object.class, "eventConfiguration");;
     private static final FieldDesc FIELD_START_TIME = FieldDesc.of(long.class, ImplicitFields.START_TIME);
+    private static final FieldDesc FIELD_SHOULD_COMMIT = FieldDesc.of(boolean.class, hiddenName("shouldCommitFld"));
     private static final ClassDesc ANNOTATION_ENABLED = classDesc(Enabled.class);
     private static final ClassDesc ANNOTATION_NAME = classDesc(Name.class);
     private static final ClassDesc ANNOTATION_REGISTERED = classDesc(Registered.class);
+    private static final ClassDesc ANNOTATION_CONTEXTUAL = classDesc(Contextual.class);
+    private static final ClassDesc ANNOTATION_SELECTOR = classDesc(Selector.class);
     private static final ClassDesc ANNOTATION_REMOVE_FIELDS = classDesc(RemoveFields.class);
     private static final ClassDesc TYPE_EVENT_CONFIGURATION = classDesc(EventConfiguration.class);
     private static final ClassDesc TYPE_ISE = Bytecode.classDesc(IllegalStateException.class);
@@ -106,6 +111,8 @@ final class EventInstrumentation {
     private static final MethodDesc METHOD_RESET = MethodDesc.of("reset", "()V");
     private static final MethodDesc METHOD_SHOULD_COMMIT_LONG = MethodDesc.of("shouldCommit", "(J)Z");
     private static final MethodDesc METHOD_TIME_STAMP = MethodDesc.of("timestamp", "()J");
+    private static final MethodDesc METHOD_PUSH_CTX = MethodDesc.of("pushContext", "(J)V");
+    private static final MethodDesc METHOD_POP_CTX = MethodDesc.of("popContext", "(J)Z");
 
     private final ClassModel classModel;
     private final List<SettingDesc> settingDescs;
@@ -140,6 +147,17 @@ final class EventInstrumentation {
         // been registered,
         // so we add a guard against a null reference.
         this.guardEventConfiguration = guardEventConfiguration;
+    }
+
+    /**
+     * Make an element name 'hidden' by prefixing it with a caret.
+     * The prefix is valid in bytecode but will be refused by javac such that element can not get accidentally
+     * overridden by the user.
+     * @param name the element name
+     * @return the name prefixed with '^' if it is not already prefixed
+     */
+    private static String hiddenName(String name) {
+        return name.startsWith(Utils.HIDDEN_NAME_PREFIX) ? name : Utils.HIDDEN_NAME_PREFIX + name;
     }
 
     private ImplicitFields determineImplicitFields() {
@@ -207,6 +225,28 @@ final class EventInstrumentation {
         return true;
     }
 
+    boolean isContextualEvent() {
+        if (!hasAnnotation(classModel, ANNOTATION_CONTEXTUAL)) {
+            if (superClass != null) {
+                Contextual cp = superClass.getAnnotation(Contextual.class);
+                return cp != null;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    byte getSelector() {
+        if (hasAnnotation(classModel, ANNOTATION_SELECTOR)) {
+            String key = annotationValue(classModel, ANNOTATION_SELECTOR, String.class);
+            if (key != null) {
+                return SelectorValue.of(key).value;
+            }
+        }
+        // select "all"
+        return 0;
+    }
+
     boolean isEnabled() {
         Boolean result = annotationValue(classModel, ANNOTATION_ENABLED, Boolean.class);
         if (result != null) {
@@ -271,6 +311,20 @@ final class EventInstrumentation {
             }
         }
         return null;
+    }
+
+    private static boolean hasAnnotation(ClassModel classModel, ClassDesc classDesc) {
+        String typeDescriptor = classDesc.descriptorString();
+        for (ClassElement ce : classModel.elements()) {
+            if (ce instanceof RuntimeVisibleAnnotationsAttribute rvaa) {
+                for (Annotation a : rvaa.annotations()) {
+                    if (a.className().equalsString(typeDescriptor)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private static List<SettingDesc> buildSettingDescs(Class<?> superClass, ClassModel classModel) {
@@ -437,6 +491,11 @@ final class EventInstrumentation {
                 codeBuilder.aload(0);
                 invokestatic(codeBuilder, TYPE_EVENT_CONFIGURATION, METHOD_TIME_STAMP);
                 putfield(codeBuilder, getEventClassDesc(), FIELD_START_TIME);
+                if (isContextualEvent()) {
+                    getEventWriter(codeBuilder); // [ew]
+                    codeBuilder.ldc(eventTypeId); // [ew, id, id]
+                    invokevirtual(codeBuilder, TYPE_EVENT_WRITER, METHOD_PUSH_CTX); // []
+                }
                 codeBuilder.return_();
             }
         });
@@ -451,6 +510,13 @@ final class EventInstrumentation {
                 getfield(codeBuilder, getEventClassDesc(), FIELD_START_TIME);
                 invokestatic(codeBuilder, TYPE_EVENT_CONFIGURATION, METHOD_DURATION);
                 putfield(codeBuilder, getEventClassDesc(), FIELD_DURATION);
+                if (isContextualEvent()) {
+                    codeBuilder.aload(0); // [this]
+                    getEventWriter(codeBuilder); // [this, ew]
+                    codeBuilder.ldc(eventTypeId); // [this, ew, id, id]
+                    invokevirtual(codeBuilder, TYPE_EVENT_WRITER, METHOD_POP_CTX); // [this, result]
+                    putfield(codeBuilder, getEventClassDesc(), FIELD_SHOULD_COMMIT); // []
+                }
                 codeBuilder.return_();
             }
         });
@@ -501,6 +567,11 @@ final class EventInstrumentation {
         // MyEvent#shouldCommit()
         updateMethod(METHOD_EVENT_SHOULD_COMMIT, codeBuilder -> {
             Label fail = codeBuilder.newLabel();
+            if (isContextualEvent()) {
+                codeBuilder.aload(0); // [this]
+                getfield(codeBuilder, getEventClassDesc(), FIELD_SHOULD_COMMIT); // [result]
+                codeBuilder.ifeq(fail); // []
+            }
             if (guardEventConfiguration) {
                 getEventConfiguration(codeBuilder);
                 codeBuilder.if_null(fail);

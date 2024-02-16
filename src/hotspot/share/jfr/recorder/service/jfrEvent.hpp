@@ -28,6 +28,7 @@
 #include "jfr/recorder/jfrEventSetting.inline.hpp"
 #include "jfr/recorder/service/jfrEventThrottler.hpp"
 #include "jfr/recorder/stacktrace/jfrStackTraceRepository.hpp"
+#include "jfr/support/jfrContext.hpp"
 #include "jfr/utilities/jfrTime.hpp"
 #include "jfr/utilities/jfrTypes.hpp"
 #include "jfr/writers/jfrNativeEventWriter.hpp"
@@ -167,6 +168,13 @@ class JfrEvent {
     } else if (_end_time == 0) {
       set_endtime(JfrTicks::now());
     }
+
+    if (JfrEventSetting::selector(T::eventId) > 0) {
+      if (JfrEventSetting::selector(T::eventId) == 1 && JfrContext::peek() == nullptr) {
+        // selector="if-context" but there is no context
+        return false;
+      }
+    }
     if (T::isInstant || T::isRequestable) {
       return T::hasThrottle ? JfrEventThrottler::accept(T::eventId, _untimed ? 0 : _start_time) : true;
     }
@@ -205,6 +213,12 @@ class JfrEvent {
       // Most likely a pending OOM.
       return;
     }
+
+    // periodic/requestable events are not affecting the JFR context
+    if (!T::is_requestable()) {
+      JfrContext::mark(tl);
+    }
+
     bool large = is_large();
     if (write_sized_event(buffer, thread, tid, sid, large)) {
       // Event written successfully

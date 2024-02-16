@@ -58,6 +58,12 @@ void JfrEventSetting::set_large(JfrEventId event_id) {
   setting(event_id).large = true;
 }
 
+void JfrEventSetting::set_selector(jlong id, jbyte selector) {
+  JfrEventId event_id = (JfrEventId)id;
+  assert(bounds_check_event(event_id), "invariant");
+  setting(event_id).selector = selector;
+}
+
 void JfrEventSetting::unhide_internal_types() {
   _internal_types = true;
 }

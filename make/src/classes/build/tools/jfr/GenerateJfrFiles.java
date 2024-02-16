@@ -658,7 +658,8 @@ public class GenerateJfrFiles {
             out.write("  u1     stacktrace;");
             out.write("  u1     enabled;");
             out.write("  u1     large;");
-            out.write("  u1     pad[5]; // Because GCC on linux ia32 at least tries to pack this.");
+            out.write("  u1     selector;");
+            out.write("  u1     pad[4]; // Because GCC on linux ia32 at least tries to pack this.");
             out.write("};");
             out.write("");
             out.write("union JfrNativeSettings {");
@@ -771,6 +772,8 @@ public class GenerateJfrFiles {
             out.write("#include \"oops/klass.hpp\"");
             out.write("#include \"jfrfiles/jfrTypes.hpp\"");
             out.write("#include \"jfr/utilities/jfrTypes.hpp\"");
+            out.write("#include \"jfr/support/jfrContext.hpp\"");
+            out.write("#include \"jfr/support/jfrThreadLocal.hpp\"");
             out.write("#include \"utilities/macros.hpp\"");
             out.write("#include \"utilities/ticks.hpp\"");
             out.write("#if INCLUDE_JFR");

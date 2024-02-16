@@ -61,7 +61,17 @@ public final class EventConfiguration {
 
     // Accessed by generated code in event class
     public boolean shouldCommit(long duration) {
-        return isEnabled() && duration >= platformEventType.getThresholdTicks();
+        if (!isEnabled()) {
+            return false;
+        }
+        if (getPlatformEventType().getSelector() == 1) {
+            // selector="if-context"
+            if (!JVM.hasContext()) {
+                // no context present, don't commit
+                return false;
+            }
+        }
+        return duration >= platformEventType.getThresholdTicks();
     }
 
     // Accessed by generated code in event class

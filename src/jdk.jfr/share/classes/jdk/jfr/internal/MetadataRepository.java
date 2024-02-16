@@ -82,6 +82,9 @@ public final class MetadataRepository {
                     if (!pEventType.isMethodSampling()) {
                         PeriodicEvents.addJVMEvent(pEventType);
                     }
+                } else {
+                    // enable selector for all non-periodic events
+                    pEventType.setHasSelector(true);
                 }
                 nativeControls.add(new EventControl(pEventType));
                 nativeEventTypes.add(eventType);

@@ -59,6 +59,11 @@ public final class Utils {
     private static final Object flushObject = new Object();
     private static final String LEGACY_EVENT_NAME_PREFIX = "com.oracle.jdk.";
 
+    /* Prefixing an element name with '^' will make it 'hidden' such that it won't be
+       accidentally overridden in event classes.
+     */
+    public static final String HIDDEN_NAME_PREFIX = "^";
+
     /**
      * Return all annotations as they are visible in the source code
      *
@@ -338,7 +343,7 @@ public final class Utils {
         }
         while (cReal != null) {
             for (Field realField : cReal.getDeclaredFields()) {
-                if (isSupportedType(realField.getType())) {
+                if (!realField.getName().startsWith(HIDDEN_NAME_PREFIX) && isSupportedType(realField.getType())) {
                     String fieldName = realField.getName();
                     Field mirrorField = mirrorFields.get(fieldName);
                     if (mirrorField == null) {

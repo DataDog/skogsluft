@@ -32,6 +32,7 @@
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/recorder/stacktrace/jfrStackTraceRepository.hpp"
 #include "jfr/recorder/storage/jfrBuffer.hpp"
+#include "jfr/support/jfrContext.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
 #include "jfr/utilities/jfrTime.hpp"
 #include "jfrfiles/jfrEventClasses.hpp"
@@ -403,6 +404,7 @@ bool JfrThreadSampleClosure::do_sample_thread(JavaThread* thread, JfrStackFrame*
   if (UseSystemMemoryBarrier) {
     SystemMemoryBarrier::emit();
   }
+  JfrContext::mark(thread->jfr_thread_local());
   if (JAVA_SAMPLE == type) {
     if (thread_state_in_java(thread)) {
       ret = sample_thread_in_java(thread, frames, max_frames);

@@ -276,6 +276,10 @@ public final class TestActiveSettingEvent {
             Map<String, String> expectedSettings = new HashMap<>();
             for (EventType type : FlightRecorder.getFlightRecorder().getEventTypes()) {
                 for (SettingDescriptor s : type.getSettingDescriptors()) {
+                    if (s.getName().equals("select")) {
+                        // Skip select settings, it is optional and not always present
+                        continue;
+                    }
                     String settingName = type.getName() + "#" + s.getName();
                     String value = settingValues.get(settingName);
                     if (value == null) {

@@ -50,6 +50,8 @@ class JfrEventSetting : AllStatic {
   static jlong level(JfrEventId event_id);
   static bool is_large(JfrEventId event_id);
   static void set_large(JfrEventId event_id);
+  static jbyte selector(JfrEventId event_id);
+  static void set_selector(jlong event_id, jbyte selector);
   static void unhide_internal_types();
   static bool is_internal_types_visible();
 

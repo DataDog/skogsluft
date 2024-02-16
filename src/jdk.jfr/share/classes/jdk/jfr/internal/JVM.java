@@ -673,4 +673,11 @@ public final class JVM {
      * @param value
      */
     public static native void setMiscellaneous(long eventTypeId, long value);
+
+    public static native void setSelector(long eventTypeId, byte selector);
+
+    public static native void pushContext(long contextTypeId);
+    public static native boolean popContext(long contextTypeId);
+    public static native void markContext(long eventTypeId);
+    public static native boolean hasContext();
 }
