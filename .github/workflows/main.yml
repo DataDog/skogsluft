@@ -30,6 +30,7 @@ on:
     pull_request:
       branches:
         - master
+        - feature/*
   workflow_dispatch:
     inputs:
       platforms:
