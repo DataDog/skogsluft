@@ -19,17 +19,20 @@ jobs:
 
     - name: Pull latest changes from upstream
       run: |
+        set -x
         git config --global user.email "sync@datadoghq.com"
         git config --global user.name "Datadog Syncup Service"
+        git config --global checkout.defaultRemote "origin"
         git remote add upstream https://github.com/openjdk/jdk.git
-        git pull
         git fetch upstream
         git checkout upstream_base
         git checkout -b upstream-master upstream/master
-        git checkout master
-        git merge upstream-master
         git checkout upstream_base
-        git merge upstream-master
+        git merge upstream/master
+        git checkout master
+        git merge --ff --no-commit upstream/master
+        git add .
+        git commit -m "Sync upstream"
 
     - name: Push changes to upstream_base
       uses: ad-m/github-push-action@master
