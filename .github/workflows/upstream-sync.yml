@@ -32,7 +32,7 @@ jobs:
         git checkout master
         git merge --ff --no-commit upstream/master
         git add .
-        git commit -m "Sync upstream"
+        git commit -m "Sync upstream" || true
 
     - name: Push changes to upstream_base
       uses: ad-m/github-push-action@master
