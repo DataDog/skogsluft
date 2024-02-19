@@ -2,6 +2,7 @@
 #include "jfr/jni/jfrJavaSupport.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
 #include "jfr/utilities/jfrContextStack.hpp"
+#include "runtime/javaThread.hpp"
 #include "runtime/threads.hpp"
 #include "utilities/debug.hpp"
 
