@@ -124,7 +124,7 @@ jobs:
             debug-suffix: -debug
 
           - test-name: 'hs/tier2 serviceability'
-            test-suite: 'test/hotspot/jtreg/:tier2_serviceability'
+            test-suite: 'test/hotspot/jtreg/:hotspot_tier2_serviceability'
             debug-suffix: -debug
 
           - test-name: 'lib-test/tier1'
