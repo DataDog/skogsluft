@@ -30,6 +30,9 @@ on:
     branches:
       - master
       - 'feature/**'
+  push:
+    branches:
+      - master
   workflow_dispatch:
     inputs:
       platforms:
