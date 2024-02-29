@@ -28,3 +28,8 @@ The extra tests are necessary to make sure that the new profiling features are n
 
 The automated sanity checks will be run only for PRs against `master` and `feature/*` branches, as well as any commits/merges to `master`.
 For intermediary checks one should trigger the [sanity run](https://github.com/skogsluft/jdk-skogsluft/actions/workflows/main.yml) manually.
+
+### Contributing
+
+Contributions will only be considered from the members of the Skogsluft organization. All members must have an active signed [OCA(Oracle Contributor License)](https://oca.opensource.oracle.com/?ojr=faq).
+The terms of the OCA are applicable to all forms of information shared within this project.
