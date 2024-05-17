@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,12 +21,19 @@
  * questions.
  */
 
-package m;
+/*
+ * @test
+ * @bug 8324809
+ * @summary compiler can crash with SOE while proving if two recursive types are disjoint
+ * @compile SOEWhileProvingDisjointnessTest.java
+ */
 
+class SOEWhileProvingDisjointnessTest {
+    class Criteria<B extends Builder<? extends Criteria>> {
+        public <D extends Builder<E>, E extends Criteria<D>> D builder() {
+            return (D) new Builder<>();
+        }
+    }
 
-class Gee extends g.G {
-    public sun.security.x509.X509CertInfo cert;
-    public com.sun.tools.jdeps.Analyzer analyzer;     // not exported
-    public com.sun.source.tree.BinaryTree tree;      // exported
-    public com.sun.management.ThreadMXBean mxbean;   // exported
+    class Builder<C extends Criteria<? extends Builder<C>>> {}
 }
