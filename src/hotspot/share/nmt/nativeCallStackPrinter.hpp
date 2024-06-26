@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024, Red Hat, Inc. All rights reserved.
  * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -19,28 +20,32 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */
-/*
- * @test
- * @bug 8334252
- * @summary Test lambda declared in early construction context
- * @enablePreview
+ *
  */
 
-public class LambdaOuterCapture {
+#ifndef SHARE_NMT_NATIVECALLSTACKPRINTER_HPP
+#define SHARE_NMT_NATIVECALLSTACKPRINTER_HPP
 
-    public class Inner {
+#include "memory/arena.hpp"
+#include "nmt/memflags.hpp"
+#include "utilities/globalDefinitions.hpp"
+#include "utilities/resourceHash.hpp"
 
-        public Inner() {
-            Runnable r = () -> System.out.println(LambdaOuterCapture.this);
-            this(r);
-        }
+class outputStream;
+class NativeCallStack;
 
-        public Inner(Runnable r) {
-        }
-    }
+// This is a text cache for NativeCallStack frames by PC. When printing tons of
+// NativeCallStack instances (e.g. during NMT detail reports), printing through
+// this printer speeds up frame description resolution by quite a bit.
+class NativeCallStackPrinter {
+  // Cache-related data are mutable to be able to use NativeCallStackPrinter as
+  // inline member in classes with const printing methods.
+  mutable Arena _text_storage;
+  mutable ResourceHashtable<address, const char*, 293, AnyObj::C_HEAP, mtNMT> _cache;
+  outputStream* const _out;
+public:
+  NativeCallStackPrinter(outputStream* out);
+  void print_stack(const NativeCallStack* stack) const;
+};
 
-    public static void main(String[] args) {
-        new LambdaOuterCapture().new Inner();
-    }
-}
+#endif // SHARE_NMT_NATIVECALLSTACKPRINTER_HPP

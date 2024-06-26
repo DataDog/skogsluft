@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024, Red Hat, Inc. All rights reserved.
  * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -19,28 +20,36 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */
-/*
- * @test
- * @bug 8334252
- * @summary Test lambda declared in early construction context
- * @enablePreview
+ *
  */
 
-public class LambdaOuterCapture {
+#include "precompiled.hpp"
+#include "logging/log.hpp"
+#include "nmt/nativeCallStackPrinter.hpp"
+#include "utilities/globalDefinitions.hpp"
+#include "utilities/nativeCallStack.hpp"
+#include "utilities/ostream.hpp"
 
-    public class Inner {
+NativeCallStackPrinter::NativeCallStackPrinter(outputStream* out) :
+    _text_storage(mtNMT, Arena::Tag::tag_other, 128 * K), _out(out)
+{}
 
-        public Inner() {
-            Runnable r = () -> System.out.println(LambdaOuterCapture.this);
-            this(r);
-        }
-
-        public Inner(Runnable r) {
-        }
+void NativeCallStackPrinter::print_stack(const NativeCallStack* stack) const {
+  for (int i = 0; i < NMT_TrackingStackDepth; i++) {
+    const address pc = stack->get_frame(i);
+    if (pc == nullptr) {
+      break;
     }
-
-    public static void main(String[] args) {
-        new LambdaOuterCapture().new Inner();
+    bool created = false;
+    const char** cached_frame_text = _cache.put_if_absent(pc, &created);
+    if (created) {
+      stringStream ss(4 * K);
+      stack->print_frame(&ss, pc);
+      const size_t len = ss.size();
+      char* store = NEW_ARENA_ARRAY(&_text_storage, char, len + 1);
+      memcpy(store, ss.base(), len + 1);
+      (*cached_frame_text) = store;
     }
+    _out->print_raw_cr(*cached_frame_text);
+  }
 }
